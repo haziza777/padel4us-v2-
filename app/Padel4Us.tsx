@@ -761,7 +761,7 @@ export default function Padel4Us() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 3 }}>
               {videos.filter(v => v.user_id === enriched.id).map((v, i) => (
                 <div key={v.id} style={{ aspectRatio: "9/16", borderRadius: 6, background: VIDEO_COLORS[i % 5], display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative", overflow: "hidden" }}>
-                  {v.video_url && <video src={v.video_url} style={{ width: "100%", height: "100%", objectFit: "cover" }} muted />}
+        {v.video_url && <video src={v.video_url} style={{ width: "100%", height: "100%", objectFit: "contain", background: "#000" }} muted />}
                   {!v.video_url && <span style={{ fontSize: 24, opacity: 0.4 }}>▶</span>}
                   <div style={{ position: "absolute", bottom: 6, right: 6, color: "rgba(255,255,255,0.5)", fontSize: 10 }}>❤️ {v.likes_count}</div>
                 </div>
