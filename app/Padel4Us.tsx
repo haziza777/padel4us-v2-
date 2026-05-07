@@ -1244,7 +1244,7 @@ export default function Padel4Us() {
 
   return (
     <div style={{
-      maxWidth: 430, margin: "0 auto", height: "100vh",
+        maxWidth: "100%", margin: "0 auto", height: "100vh",
       background: "#0a0e17", position: "relative",
       fontFamily: "'Heebo', 'Segoe UI', sans-serif",
       direction: "rtl", overflow: "hidden",
