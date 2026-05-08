@@ -263,10 +263,23 @@ export default function Padel4Us() {
     el.value = "";
     await supabase.from("comments").insert({video_id:mComments.id,user_id:userId,content:val});
     const { count } = await supabase.from("comments").select("*",{count:"exact",head:true}).eq("video_id",mComments.id);
-    await supabase.from("videos").update({comments_count:count||0}).eq("id",mComments.id);
-    setVideos(prev => prev.map(v => v.id === mComments.id ? {...v, comments_count: count||0} : v));
-    await openComments(mComments);
-    await loadData();
+    const newCount = count||0;
+    await supabase.from("videos").update({comments_count:newCount}).eq("id",mComments.id);
+    setVideos(prev=>prev.map(vv=>vv.id===mComments.id?{...vv,comments_count:newCount}:vv));
+    setMComments(prev=>prev?{...prev,comments_count:newCount}:prev);
+    await openComments({...mComments,comments_count:newCount});
+  };
+
+  const doDeleteComment = async (commentId:string) => {
+    if (!confirm("למחוק תגובה?")) return;
+    if (!mComments) return;
+    await supabase.from("comments").delete().eq("id",commentId);
+    const { count } = await supabase.from("comments").select("*",{count:"exact",head:true}).eq("video_id",mComments.id);
+    const newCount = count||0;
+    await supabase.from("videos").update({comments_count:newCount}).eq("id",mComments.id);
+    setVideos(prev=>prev.map(vv=>vv.id===mComments.id?{...vv,comments_count:newCount}:vv));
+    setMComments(prev=>prev?{...prev,comments_count:newCount}:prev);
+    await openComments({...mComments,comments_count:newCount});
   };
 
   /* ============ COMPUTED ============ */
@@ -513,13 +526,20 @@ export default function Padel4Us() {
       </div>}
 
       {/* Comments */}
-      {mComments&&<div onClick={()=>setMComments(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}}>
+      {mComments&&<div onClick={()=>{setMComments(null);loadData();}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}}>
         <div onClick={e=>e.stopPropagation()} style={{background:"#1a2634",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px",width:"100%",maxWidth:500,maxHeight:"85vh",overflowY:"auto"}}>
-          <div style={{color:"#fff",fontSize:18,fontWeight:700,marginBottom:16,textAlign:"center"}}>💬 תגובות</div>
+          <div style={{color:"#fff",fontSize:18,fontWeight:700,marginBottom:4,textAlign:"center"}}>💬 תגובות</div>
+          <div style={{color:"rgba(255,255,255,.4)",fontSize:13,marginBottom:16,textAlign:"center"}}>{comments.length} תגובות</div>
           <div style={{maxHeight:300,overflowY:"auto",marginBottom:16}}>
             {comments.length===0?<div style={{textAlign:"center",padding:30,color:"rgba(255,255,255,.3)",fontSize:14}}>עדיין אין תגובות — היה הראשון!</div>:comments.map(c=>(
               <div key={c.id} style={{padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,.06)"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{color:"#00b4d8",fontSize:13,fontWeight:600}}>{c.user_name}</div><div style={{color:"rgba(255,255,255,.2)",fontSize:10}}>{new Date(c.created_at).toLocaleDateString("he-IL")}</div></div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div style={{color:"#00b4d8",fontSize:13,fontWeight:600}}>{c.user_name}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{color:"rgba(255,255,255,.2)",fontSize:10}}>{new Date(c.created_at).toLocaleDateString("he-IL")}</div>
+                    {(c.user_id===userId||mComments.user_id===userId)&&<div onClick={()=>doDeleteComment(c.id)} style={{color:"#e63946",fontSize:11,cursor:"pointer",padding:"2px 6px",borderRadius:8,background:"rgba(230,57,70,.1)"}}>מחק</div>}
+                  </div>
+                </div>
                 <div style={{color:"rgba(255,255,255,.8)",fontSize:14,marginTop:4}}>{c.content}</div>
               </div>
             ))}
