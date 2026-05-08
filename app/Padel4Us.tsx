@@ -196,6 +196,14 @@ export default function Padel4Us() {
     await loadData(); setLoading(false);
   };
 
+  const doDeleteGame = async (gid:string) => {
+    if (!confirm("למחוק את המשחק?")) return;
+    await supabase.from("game_players").delete().eq("game_id",gid);
+    await supabase.from("games").delete().eq("id",gid);
+    setMGameDet(null);
+    await loadData();
+  };
+
   const doJoinGame = async (gid:string) => {
     if (!userId) return;
     if (joinedG[gid]) await supabase.from("game_players").delete().eq("game_id",gid).eq("player_id",userId);
@@ -612,6 +620,7 @@ export default function Padel4Us() {
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>{[{l:"מארגן",v:mGameDet.host_name||""},{l:"רמה",v:mGameDet.level},{l:"פנויים",v:`${mGameDet.spots}`},{l:"בפנים",v:`${mGameDet.joined?.length||0}`}].map((x,i)=><div key={i} style={{background:"rgba(255,255,255,.04)",borderRadius:10,padding:"10px 14px"}}><div style={{color:"rgba(255,255,255,.4)",fontSize:11}}>{x.l}</div><div style={{color:"#fff",fontSize:14,fontWeight:600,marginTop:2}}>{x.v}</div></div>)}</div>
           {mGameDet.joined&&mGameDet.joined.length>0&&<div style={{marginBottom:20}}><div style={{color:"rgba(255,255,255,.5)",fontSize:12,marginBottom:8}}>שחקנים</div>{mGameDet.joined.map((n,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,.06)"}}><div style={{width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#0077b6,#00b4d8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🎾</div><div style={{color:"#fff",fontSize:14}}>{n}</div></div>)}</div>}
           <button onClick={()=>{doJoinGame(mGameDet.id);setMGameDet(null);}} style={btn1}>{joinedG[mGameDet.id]?"בטל הצטרפות":"🎾 הצטרף"}</button>
+          {mGameDet.host_id===userId&&<button onClick={()=>doDeleteGame(mGameDet.id)} style={{width:"100%",padding:"12px 0",marginTop:10,borderRadius:12,border:"1px solid rgba(230,57,70,.3)",background:"transparent",color:"#e63946",fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>🗑 מחק משחק</button>}
         </div>
       </div>}
 
