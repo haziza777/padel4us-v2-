@@ -264,6 +264,7 @@ export default function Padel4Us() {
     await supabase.from("comments").insert({video_id:mComments.id,user_id:userId,content:val});
     const { count } = await supabase.from("comments").select("*",{count:"exact",head:true}).eq("video_id",mComments.id);
     await supabase.from("videos").update({comments_count:count||0}).eq("id",mComments.id);
+    setVideos(prev => prev.map(v => v.id === mComments.id ? {...v, comments_count: count||0} : v));
     await openComments(mComments);
     await loadData();
   };
