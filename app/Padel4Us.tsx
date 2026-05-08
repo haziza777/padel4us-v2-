@@ -70,6 +70,7 @@ export default function Padel4Us() {
   const [nVenue, setNVenue] = useState("");
   const [nDate, setNDate] = useState("");
   const [nTime, setNTime] = useState("");
+  const [nDuration, setNDuration] = useState("");
   const [nSpots, setNSpots] = useState("");
   const [nLevel, setNLevel] = useState("");
   const [nUrg, setNUrg] = useState(false);
@@ -191,7 +192,7 @@ export default function Padel4Us() {
     if (!nVenue||!nDate||!nTime||!userId) return;
     setLoading(true);
     await supabase.from("games").insert({host_id:userId,venue:nVenue,game_date:nDate,game_time:nTime,spots:parseInt(nSpots)||1,level:nLevel||"כל הרמות",urgent:nUrg});
-    setMNewGame(false); setNVenue(""); setNDate(""); setNTime(""); setNSpots(""); setNLevel(""); setNUrg(false);
+    setMNewGame(false); setNVenue(""); setNDate(""); setNTime(""); setNDuration(""); setNSpots(""); setNLevel(""); setNUrg(false);
     await loadData(); setLoading(false);
   };
 
@@ -566,14 +567,42 @@ export default function Padel4Us() {
       </div>}
 
       {/* New Game */}
-      {mNewGame&&<div onClick={()=>setMNewGame(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}}>
-        <div onClick={e=>e.stopPropagation()} style={{background:"#1a2634",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px",width:"100%",maxWidth:500,maxHeight:"85vh",overflowY:"auto"}}>
-          <div style={{color:"#fff",fontSize:18,fontWeight:700,marginBottom:20,textAlign:"center"}}>🎾 משחק חדש</div>
-          {[{l:"מתחם",p:"שם המתחם",v:nVenue,f:setNVenue},{l:"תאריך",p:"יום שלישי",v:nDate,f:setNDate},{l:"שעה",p:"20:00",v:nTime,f:setNTime},{l:"חסרים",p:"1-3",v:nSpots,f:setNSpots},{l:"רמה",p:"3.5",v:nLevel,f:setNLevel}].map((x,i)=><div key={i} style={{marginBottom:12}}><div style={{color:"rgba(255,255,255,.5)",fontSize:12,marginBottom:4}}>{x.l}</div><input style={inp} placeholder={x.p} value={x.v} onChange={e=>x.f(e.target.value)}/></div>)}
-          <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,cursor:"pointer"}}><input type="checkbox" checked={nUrg} onChange={e=>setNUrg(e.target.checked)}/><span style={{color:"rgba(255,255,255,.5)",fontSize:13}}>🔴 דחוף!</span></label>
-          <button onClick={doCreateGame} disabled={!nVenue||!nDate||!nTime||loading} style={{...btn1,opacity:(!nVenue||!nDate||!nTime||loading)?.4:1}}>{loading?"מפרסם...":"פרסם משחק"}</button>
-        </div>
-      </div>}
+      {mNewGame&&(()=>{
+        const venues = ["פאדל נשר","פאדל חיפה","פאדל קיסריה","פאדל מגדל העמק","אחר"];
+        const times:string[] = [];
+        for(let h=6;h<=23;h++){times.push(`${h.toString().padStart(2,"0")}:00`);times.push(`${h.toString().padStart(2,"0")}:30`);}
+        const durations = ["1:00","1:30","2:00","2:30","3:00"];
+        const spots = ["1","2","3"];
+        const lvls = ["2.0","2.5","3.0","3.5","4.0","4.5","5.0","כל הרמות"];
+        const today = new Date();
+        const dates:string[] = [];
+        for(let d=0;d<30;d++){const dt=new Date(today);dt.setDate(today.getDate()+d);const day=["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"][dt.getDay()];dates.push(`יום ${day} ${dt.getDate().toString().padStart(2,"0")}/${(dt.getMonth()+1).toString().padStart(2,"0")}`);}
+
+        const sel = (label:string,options:string[],value:string,onChange:(v:string)=>void) => (
+          <div style={{marginBottom:14}}>
+            <div style={{color:"rgba(255,255,255,.5)",fontSize:12,marginBottom:6}}>{label}</div>
+            <select value={value} onChange={e=>onChange(e.target.value)} style={{...inp,direction:"rtl",appearance:"auto",background:"rgba(255,255,255,.08)",cursor:"pointer"}}>
+              <option value="" style={{background:"#1a2634"}}>בחר...</option>
+              {options.map(o=><option key={o} value={o} style={{background:"#1a2634"}}>{o}</option>)}
+            </select>
+          </div>
+        );
+
+        return <div onClick={()=>setMNewGame(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#1a2634",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px",width:"100%",maxWidth:500,maxHeight:"85vh",overflowY:"auto"}}>
+            <div style={{color:"#fff",fontSize:18,fontWeight:700,marginBottom:20,textAlign:"center"}}>🎾 משחק חדש</div>
+            {sel("מתחם",venues,nVenue,setNVenue)}
+            {nVenue==="אחר"&&<div style={{marginBottom:14}}><input style={inp} placeholder="שם המתחם..." value={nVenue==="אחר"?"":nVenue} onChange={e=>setNVenue(e.target.value)}/></div>}
+            {sel("תאריך",dates,nDate,setNDate)}
+            {sel("שעת התחלה",times,nTime,setNTime)}
+            {sel("משך משחק",durations,nDuration,setNDuration)}
+            {sel("כמה חסרים",spots,nSpots,setNSpots)}
+            {sel("רמה מבוקשת",lvls,nLevel,setNLevel)}
+            <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,cursor:"pointer"}}><input type="checkbox" checked={nUrg} onChange={e=>setNUrg(e.target.checked)}/><span style={{color:"rgba(255,255,255,.5)",fontSize:13}}>🔴 דחוף — צריך שחקנים עכשיו!</span></label>
+            <button onClick={doCreateGame} disabled={!nVenue||!nDate||!nTime||loading} style={{...btn1,opacity:(!nVenue||!nDate||!nTime||loading)?.4:1}}>{loading?"מפרסם...":"פרסם משחק"}</button>
+          </div>
+        </div>;
+      })()}
 
       {/* Game Details */}
       {mGameDet&&<div onClick={()=>setMGameDet(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}}>
