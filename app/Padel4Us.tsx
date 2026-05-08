@@ -285,7 +285,7 @@ export default function Padel4Us() {
     setMEditProf(false); await loadData(); setLoading(false);
   };
 
-  const doConfirmLevel = async (pid:string) => { if (!userId||pid===userId) return; await supabase.from("level_confirmations").insert({player_id:pid,confirmed_by:userId}); await loadData(); };
+  const doConfirmLevel = async (pid:string) => { if (!userId||pid===userId) return; const { error } = await supabase.from("level_confirmations").insert({player_id:pid,confirmed_by:userId}); if (error) { alert("כבר אישרת את הרמה שלו"); } else { alert("✓ אישרת את הרמה!"); } await loadData(); };
 
   const doShare = async (v:Video) => {
     const url = window.location.origin+"?v="+v.id;
