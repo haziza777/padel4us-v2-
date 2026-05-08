@@ -66,6 +66,10 @@ export default function Padel4Us() {
   const [mVideo, setMVideo] = useState<Video|null>(null);
   const [mComments, setMComments] = useState<Video|null>(null);
   const [comments, setComments] = useState<CommentT[]>([]);
+  const [mNewGroup, setMNewGroup] = useState(false);
+  const [mGroupView, setMGroupView] = useState<Group|null>(null);
+  const [ngName, setNgName] = useState("");
+  const [ngSelected, setNgSelected] = useState<string[]>([]);
 
   const [nVenue, setNVenue] = useState("");
   const [nDate, setNDate] = useState("");
@@ -202,6 +206,38 @@ export default function Padel4Us() {
     await supabase.from("games").delete().eq("id",gid);
     setMGameDet(null);
     await loadData();
+  };
+
+  const doCreateGroup = async () => {
+    if (!ngName.trim()||!userId) return;
+    setLoading(true);
+    const { data:newG, error } = await supabase.from("groups").insert({name:ngName.trim(),created_by:userId,avatar:"🎾"}).select().single();
+    if (error||!newG) { alert("שגיאה ביצירת קבוצה"); setLoading(false); return; }
+    await supabase.from("group_members").insert({group_id:newG.id,player_id:userId});
+    for (const pid of ngSelected) {
+      await supabase.from("group_members").insert({group_id:newG.id,player_id:pid});
+    }
+    setMNewGroup(false); setNgName(""); setNgSelected([]);
+    await loadData(); setLoading(false);
+  };
+
+  const doLeaveGroup = async (gid:string) => {
+    if (!userId||!confirm("לעזוב את הקבוצה?")) return;
+    await supabase.from("group_members").delete().eq("group_id",gid).eq("player_id",userId);
+    setMGroupView(null);
+    await loadData();
+  };
+
+  const doDeleteGroup = async (gid:string) => {
+    if (!confirm("למחוק את הקבוצה?")) return;
+    await supabase.from("group_members").delete().eq("group_id",gid);
+    await supabase.from("groups").delete().eq("id",gid);
+    setMGroupView(null);
+    await loadData();
+  };
+
+  const toggleGroupMember = (pid:string) => {
+    setNgSelected(prev=>prev.includes(pid)?prev.filter(x=>x!==pid):[...prev,pid]);
   };
 
   const doJoinGame = async (gid:string) => {
@@ -459,13 +495,14 @@ export default function Padel4Us() {
             <div style={{padding:20}}>
               <div style={{color:"#fff",fontSize:22,fontWeight:700,marginBottom:20}}>הקהילה שלי 👥</div>
               <div style={{color:"rgba(255,255,255,.5)",fontSize:13,fontWeight:600,marginBottom:12}}>קבוצות קבועות</div>
-              {groups.length===0?<div style={{textAlign:"center",padding:30,color:"rgba(255,255,255,.3)",fontSize:14}}>עדיין אין קבוצות</div>:groups.map(g=>(
-                <div key={g.id} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 0",borderBottom:"1px solid rgba(255,255,255,.06)",cursor:"pointer"}}>
+              {groups.length===0?<div style={{textAlign:"center",padding:30,color:"rgba(255,255,255,.3)",fontSize:14}}>עדיין אין קבוצות — צור את הראשונה!</div>:groups.map(g=>(
+                <div key={g.id} onClick={()=>setMGroupView(g)} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 0",borderBottom:"1px solid rgba(255,255,255,.06)",cursor:"pointer"}}>
                   <div style={{width:50,height:50,borderRadius:14,background:"linear-gradient(135deg,rgba(0,180,216,.2),rgba(0,119,182,.2))",border:"1px solid rgba(0,180,216,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>{g.avatar}</div>
                   <div style={{flex:1}}><div style={{color:"#fff",fontSize:15,fontWeight:600}}>{g.name}</div><div style={{color:"rgba(255,255,255,.35)",fontSize:13,marginTop:4}}>{g.members.length} חברים</div></div>
+                  <div style={{color:"rgba(255,255,255,.2)",fontSize:18}}>←</div>
                 </div>
               ))}
-              <button style={{width:"100%",padding:"14px 0",marginTop:16,borderRadius:12,border:"1px dashed rgba(0,180,216,.3)",background:"transparent",color:"#00b4d8",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>+ צור קבוצה חדשה</button>
+              <button onClick={()=>setMNewGroup(true)} style={{width:"100%",padding:"14px 0",marginTop:16,borderRadius:12,border:"1px dashed rgba(0,180,216,.3)",background:"transparent",color:"#00b4d8",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>+ צור קבוצה חדשה</button>
               {players.length>0&&<><div style={{color:"rgba(255,255,255,.5)",fontSize:13,fontWeight:600,marginTop:30,marginBottom:12}}>שחקנים באפליקציה</div><div style={{display:"flex",gap:16,overflowX:"auto",paddingBottom:8}}>{players.filter(p=>p.id!==userId).slice(0,8).map(p=><div key={p.id} onClick={()=>{setSelPlayer(p);setTab("profile");}} style={{textAlign:"center",cursor:"pointer",flexShrink:0}}><div style={{width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#0077b6,#00b4d8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,marginBottom:6}}>🎾</div><div style={{color:"rgba(255,255,255,.5)",fontSize:11,maxWidth:60,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name.split(" ")[0]}</div></div>)}</div></>}
             </div>
           </div>
@@ -630,6 +667,63 @@ export default function Padel4Us() {
           <div style={{color:"#fff",fontSize:18,fontWeight:700,marginBottom:20,textAlign:"center"}}>✏️ ערוך פרופיל</div>
           {[{l:"שם",v:eName,f:setEName},{l:"אזור",v:eArea,f:setEArea},{l:"רמה",v:eLevel,f:setELevel},{l:"יד",v:eHand,f:setEHand},{l:"צד",v:eSide,f:setESide},{l:"סגנון",v:eStyle,f:setEStyle},{l:"עליך",v:eBio,f:setEBio}].map((x,i)=><div key={i} style={{marginBottom:12}}><div style={{color:"rgba(255,255,255,.5)",fontSize:12,marginBottom:4}}>{x.l}</div><input style={inp} value={x.v} onChange={e=>x.f(e.target.value)}/></div>)}
           <button onClick={doSaveProfile} disabled={loading} style={{...btn1,marginTop:8,opacity:loading?.5:1}}>{loading?"שומר...":"שמור"}</button>
+        </div>
+      </div>}
+
+      {/* New Group */}
+      {mNewGroup&&<div onClick={()=>setMNewGroup(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}}>
+        <div onClick={e=>e.stopPropagation()} style={{background:"#1a2634",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px",width:"100%",maxWidth:500,maxHeight:"85vh",overflowY:"auto"}}>
+          <div style={{color:"#fff",fontSize:18,fontWeight:700,marginBottom:20,textAlign:"center"}}>👥 קבוצה חדשה</div>
+          <div style={{marginBottom:16}}>
+            <div style={{color:"rgba(255,255,255,.5)",fontSize:12,marginBottom:6}}>שם הקבוצה</div>
+            <input style={inp} placeholder="למשל: שלישי בערב 🔥" value={ngName} onChange={e=>setNgName(e.target.value)}/>
+          </div>
+          <div style={{marginBottom:16}}>
+            <div style={{color:"rgba(255,255,255,.5)",fontSize:12,marginBottom:10}}>הוסף חברים ({ngSelected.length} נבחרו)</div>
+            <div style={{maxHeight:250,overflowY:"auto"}}>
+              {players.filter(p=>p.id!==userId).map(p=>(
+                <div key={p.id} onClick={()=>toggleGroupMember(p.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,.06)",cursor:"pointer"}}>
+                  <div style={{width:20,height:20,borderRadius:6,border:"2px solid",borderColor:ngSelected.includes(p.id)?"#00b4d8":"rgba(255,255,255,.2)",background:ngSelected.includes(p.id)?"#00b4d8":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    {ngSelected.includes(p.id)&&<span style={{color:"#fff",fontSize:12}}>✓</span>}
+                  </div>
+                  <div style={{width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#0077b6,#00b4d8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>🎾</div>
+                  <div>
+                    <div style={{color:"#fff",fontSize:14,fontWeight:600}}>{p.name}</div>
+                    <div style={{color:"rgba(255,255,255,.4)",fontSize:11}}>רמה {p.level} • {p.area}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <button onClick={doCreateGroup} disabled={!ngName.trim()||loading} style={{...btn1,opacity:(!ngName.trim()||loading)?.4:1}}>{loading?"יוצר...":"צור קבוצה"}</button>
+        </div>
+      </div>}
+
+      {/* Group View */}
+      {mGroupView&&<div onClick={()=>setMGroupView(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.85)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}}>
+        <div onClick={e=>e.stopPropagation()} style={{background:"#1a2634",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px",width:"100%",maxWidth:500,maxHeight:"85vh",overflowY:"auto"}}>
+          <div style={{textAlign:"center",marginBottom:20}}>
+            <div style={{fontSize:36,marginBottom:8}}>{mGroupView.avatar}</div>
+            <div style={{color:"#fff",fontSize:20,fontWeight:700}}>{mGroupView.name}</div>
+            <div style={{color:"rgba(255,255,255,.4)",fontSize:13,marginTop:4}}>{mGroupView.members.length} חברים</div>
+          </div>
+          <div style={{marginBottom:20}}>
+            <div style={{color:"rgba(255,255,255,.5)",fontSize:12,marginBottom:10,fontWeight:600}}>חברי הקבוצה</div>
+            {mGroupView.members.map((name,i)=>{
+              const p = players.find(x=>x.name===name);
+              return (
+                <div key={i} onClick={()=>{if(p){setSelPlayer(p);setTab("profile");setMGroupView(null);}}} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,.06)",cursor:p?"pointer":"default"}}>
+                  <div style={{width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#0077b6,#00b4d8)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🎾</div>
+                  <div style={{color:"#fff",fontSize:14}}>{name}</div>
+                  {p&&<div style={{color:"rgba(255,255,255,.3)",fontSize:11,marginRight:"auto"}}>רמה {p.level}</div>}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>doLeaveGroup(mGroupView.id)} style={{flex:1,padding:"12px 0",borderRadius:12,border:"1px solid rgba(255,255,255,.15)",background:"transparent",color:"rgba(255,255,255,.5)",fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>עזוב קבוצה</button>
+            <button onClick={()=>doDeleteGroup(mGroupView.id)} style={{flex:1,padding:"12px 0",borderRadius:12,border:"1px solid rgba(230,57,70,.3)",background:"transparent",color:"#e63946",fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>🗑 מחק קבוצה</button>
+          </div>
         </div>
       </div>}
     </div>
